@@ -8,3 +8,13 @@
  *
  * Consider organizing styles into separate files for maintainability.
  */
+
+// Design System
+@use "design_system/reset";
+
+// Layouts
+// @use "layouts/base";
+
+// Components (add as you build them)
+// @use "components/badge";
+// @use "components/button";
