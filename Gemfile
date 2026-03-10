@@ -1,61 +1,83 @@
 source "https://rubygems.org"
 
-# Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
+ruby "~> 3.4"
+
+# ─── Framework ────────────────────────────────────────────────────────────────
 gem "rails", "~> 8.1.2"
-# The modern asset pipeline for Rails [https://github.com/rails/propshaft]
-gem "propshaft"
-# Use postgresql as the database for Active Record
+gem "propshaft"                   # Modern asset pipeline (Rails 8 default)
+gem "bootsnap", require: false    # Reduces boot times through caching
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+# PostgreSQL with UUIDv7 primary keys via SecureRandom.uuid_v7 (Ruby 3.3+).
 gem "pg", "~> 1.1"
-# Use the Puma web server [https://github.com/puma/puma]
+
+# ─── Server ───────────────────────────────────────────────────────────────────
 gem "puma", ">= 5.0"
-# Bundle and transpile JavaScript [https://github.com/rails/jsbundling-rails]
-gem "jsbundling-rails"
-# Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
+gem "thruster", require: false    # HTTP/2 proxy, asset caching/compression
+gem "kamal", require: false       # Docker-based deployment
+
+# ─── Frontend ─────────────────────────────────────────────────────────────────
+# Hotwire: Turbo for page transitions, Stimulus for JS sprinkles.
+# No React, no HTMX, no GraphQL.
 gem "turbo-rails"
-# Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
 gem "stimulus-rails"
+gem "jsbundling-rails"            # esbuild for JavaScript bundling
+gem "dartsass-rails"              # Standalone Dart Sass binary — no Node needed for CSS
 
-# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-# gem "bcrypt", "~> 3.1.7"
+# ─── Components ───────────────────────────────────────────────────────────────
+# Testable, reusable view components with sidecar ERB templates.
+# Design system components live in app/components/ with co-located templates.
+gem "view_component"
 
-# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
-gem "tzinfo-data", platforms: %i[ windows jruby ]
+# ─── Background Jobs & Infrastructure ────────────────────────────────────────
+# Rails 8 defaults. All DB-backed, no Redis required.
+gem "solid_queue"                 # Background jobs
+gem "solid_cache"                 # Caching
+gem "solid_cable"                 # Action Cable adapter
+gem "mission_control-jobs"        # Web UI for Solid Queue
 
-# Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
-gem "solid_cache"
-gem "solid_queue"
-gem "solid_cable"
+# ─── AI ───────────────────────────────────────────────────────────────────────
+# Unified API for OpenAI + Anthropic. Streaming support, acts_as_chat and
+# acts_as_message ActiveRecord mixins, Rails generator for chat UI.
+gem "ruby_llm"
 
-# Reduces boot times through caching; required in config/boot.rb
-gem "bootsnap", require: false
+# ─── Billing ──────────────────────────────────────────────────────────────────
+# Subscriptions, checkout, customer portal.
+gem "pay"
+gem "stripe"
 
-# Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
-gem "kamal", require: false
+# ─── Analytics ────────────────────────────────────────────────────────────────
+# First-party analytics stored in your own DB. No third-party data sharing.
+# MaxMind GeoLite2 for local IP geocoding — GDPR-friendly.
+gem "ahoy_matey"
+gem "maxminddb"
+gem "geocoder"
 
-# Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
-gem "thruster", require: false
+# ─── Admin ────────────────────────────────────────────────────────────────────
+# Lightweight Rails admin engine by Chris Oliver (GoRails).
+gem "madmin"
 
+# ─── Logging ──────────────────────────────────────────────────────────────────
+# Structured, single-line JSON logs. Production-ready by default.
+# Enable in dev with LOGRAGE_IN_DEVELOPMENT=true in .env.development.
+gem "lograge"
+
+# ─── Platform ─────────────────────────────────────────────────────────────────
+gem "tzinfo-data", platforms: %i[windows jruby]
+
+# ─── Development & Test ──────────────────────────────────────────────────────
 group :development, :test do
-  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
-  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
-
-  # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
-  gem "bundler-audit", require: false
-
-  # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
-  gem "brakeman", require: false
-
-  # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
+  gem "debug", platforms: %i[mri windows], require: "debug/prelude"
+  gem "bundler-audit", require: false   # Audit gems for known security defects
+  gem "brakeman", require: false        # Static analysis for security vulnerabilities
   gem "rubocop-rails-omakase", require: false
 end
 
 group :development do
-  # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 end
 
 group :test do
-  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
 end
