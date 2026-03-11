@@ -5,5 +5,5 @@ require_relative "support/accessibility_helper"
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   include AccessibilityHelper
 
-  driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+  driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
 end
