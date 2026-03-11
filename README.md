@@ -31,12 +31,15 @@ bin/dev
 
 ## Stack
 
-- **Ruby 3.4.x / Rails 8** — latest stable
+- **Ruby 4.0.x / Rails 8.1** — latest stable
 - **PostgreSQL** — UUIDv7 primary keys via `SecureRandom.uuid_v7`
+- **Devise** — authentication (confirmable, lockable)
+- **Pundit** — authorization via policy objects (admin / user roles)
 - **Hotwire** (Turbo + Stimulus) — server-rendered HTML, no React/HTMX
 - **Sass** via dartsass-rails — standalone binary, no Node dependency for CSS
 - **ViewComponent** — testable, reusable UI components with sidecar ERB
 - **Solid Queue / Cache / Cable** — Rails 8 defaults, DB-backed, no Redis
+- **Madmin** — admin panel (locked to admin users)
 - **Propshaft** — asset pipeline
 - **Kamal 2** — deployment
 - **Minitest + Fixtures** — testing
@@ -92,6 +95,15 @@ app/assets/stylesheets/
   components/                 # One .scss per component (BEM)
 app/models/concerns/          # Concerns as adjectives (Closeable, Billable)
 test/components/              # ViewComponent tests
+```
+
+## Per-Project Setup
+
+These gems are included but need generators run per project:
+```bash
+bin/rails generate ahoy:install       # Analytics (then check migration for UUIDs)
+bin/rails generate pay:install        # Billing (configure Stripe keys in .env)
+bin/rails generate ruby_llm:install   # AI chat (OpenAI + Anthropic)
 ```
 
 ## Scripts
