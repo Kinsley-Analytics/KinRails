@@ -4,7 +4,7 @@ Rails 8 SaaS template with AI-native capabilities. Start from kin.
 
 ## Requirements
 
-- Ruby 3.4.x
+- Ruby 4.0.1
 - Rails 8
 - PostgreSQL
 - Node.js + Yarn (for esbuild JS bundling)
