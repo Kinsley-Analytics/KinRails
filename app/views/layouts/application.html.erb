@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title><%= content_for(:title) || "Kinrails" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -31,6 +31,8 @@
       <p class="alert"><%= alert %></p>
     <% end %>
 
-    <%= yield %>
+    <main>
+      <%= yield %>
+    </main>
   </body>
 </html>

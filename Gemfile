@@ -85,4 +85,6 @@ end
 group :test do
   gem "capybara"
   gem "selenium-webdriver"
+  gem "axe-core-capybara"
+  gem "axe-core-api"
 end
