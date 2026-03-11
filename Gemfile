@@ -68,6 +68,7 @@ gem "tzinfo-data", platforms: %i[windows jruby]
 # ─── Development & Test ──────────────────────────────────────────────────────
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
+  gem "dotenv-rails"                    # Load environment variables from .env files
   gem "bundler-audit", require: false   # Audit gems for known security defects
   gem "brakeman", require: false        # Static analysis for security vulnerabilities
   gem "rubocop-rails-omakase", require: false

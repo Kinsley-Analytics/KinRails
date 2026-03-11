@@ -1,0 +1,194 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+# bin/rename
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Renames the KinRails template to your new app name.
+#
+# Usage:
+#   bin/rename my_saas_app
+#
+# This will replace all occurrences of:
+#   kinrails   → my_saas_app       (snake_case: databases, filenames, configs)
+#   Kinrails   → MySaasApp         (PascalCase: Ruby module names)
+#   KinRails   → MySaasApp         (display name in docs and comments)
+#
+# After running, review changes with `git diff` before committing.
+# ──────────────────────────────────────────────────────────────────────────────
+
+require "fileutils"
+
+class AppRenamer
+  TEMPLATE_SNAKE   = "kinrails"
+  TEMPLATE_PASCAL  = "Kinrails"
+  TEMPLATE_DISPLAY = "KinRails"
+
+  # Files and directories to search (relative to app root)
+  SEARCH_PATHS = %w[
+    app
+    config
+    db
+    test
+    bin
+    lib
+    Gemfile
+    Gemfile.lock
+    package.json
+    Procfile.dev
+    Rakefile
+    README.md
+    CLAUDE.md
+    config.ru
+    .env.development.example
+    .env.test.example
+  ].freeze
+
+  # Files to skip
+  SKIP_PATTERNS = %w[
+    node_modules
+    tmp
+    log
+    .git
+    vendor/bundle
+    public/assets
+    app/assets/builds
+  ].freeze
+
+  def initialize(new_name)
+    @new_snake  = new_name.gsub("-", "_").downcase
+    @new_pascal = to_pascal(@new_snake)
+    @app_root   = File.expand_path("..", __dir__)
+  end
+
+  def run
+    validate!
+    puts header
+    puts ""
+    puts "  #{TEMPLATE_SNAKE} → #{@new_snake}"
+    puts "  #{TEMPLATE_PASCAL} → #{@new_pascal}"
+    puts "  #{TEMPLATE_DISPLAY} → #{@new_pascal}"
+    puts ""
+
+    files_changed = 0
+
+    find_files.each do |filepath|
+      content = File.read(filepath)
+      original = content.dup
+
+      # Order matters: replace display name first (KinRails),
+      # then PascalCase (Kinrails), then snake_case (kinrails).
+      content.gsub!(TEMPLATE_DISPLAY, @new_pascal)
+      content.gsub!(TEMPLATE_PASCAL, @new_pascal)
+      content.gsub!(TEMPLATE_SNAKE, @new_snake)
+
+      if content != original
+        File.write(filepath, content)
+        relative = filepath.sub("#{@app_root}/", "")
+        puts "  ✓ #{relative}"
+        files_changed += 1
+      end
+    end
+
+    puts ""
+    puts "  #{files_changed} files updated."
+    puts ""
+    puts "  Next steps:"
+    puts "    1. Review changes:  git diff"
+    puts "    2. Run setup:       bin/setup"
+    puts "    3. Commit:          git add -A && git commit -m 'Rename to #{@new_snake}'"
+    puts ""
+  end
+
+  private
+
+  def validate!
+    if @new_snake.empty?
+      abort usage
+    end
+
+    if @new_snake == TEMPLATE_SNAKE
+      abort "  Error: '#{@new_snake}' is the current name. Choose a different name."
+    end
+
+    unless @new_snake.match?(/\A[a-z][a-z0-9_]*\z/)
+      abort "  Error: '#{@new_snake}' is not a valid app name.\n" \
+            "  Use lowercase letters, numbers, and underscores. Must start with a letter."
+    end
+  end
+
+  def find_files
+    files = []
+
+    SEARCH_PATHS.each do |path|
+      full_path = File.join(@app_root, path)
+      next unless File.exist?(full_path)
+
+      if File.directory?(full_path)
+        Dir.glob("#{full_path}/**/*").each do |f|
+          next unless File.file?(f)
+          next if skip?(f)
+          next unless text_file?(f)
+          files << f
+        end
+      else
+        files << full_path if text_file?(full_path)
+      end
+    end
+
+    files.sort
+  end
+
+  def skip?(filepath)
+    SKIP_PATTERNS.any? { |pattern| filepath.include?(pattern) }
+  end
+
+  def text_file?(filepath)
+    text_extensions = %w[
+      .rb .erb .yml .yaml .json .js .mjs .css .scss .sass
+      .html .md .txt .rake .ru .gemspec .lock .sh .env
+      .toml .cfg .conf
+    ]
+    ext = File.extname(filepath).downcase
+    return true if text_extensions.include?(ext)
+
+    basename = File.basename(filepath)
+    %w[Gemfile Rakefile Procfile Procfile.dev config.ru].include?(basename)
+  end
+
+  def to_pascal(snake)
+    snake.split("_").map(&:capitalize).join
+  end
+
+  def header
+    <<~HEADER
+      ══════════════════════════════════════════════════════════════
+        Renaming #{TEMPLATE_DISPLAY} → #{@new_pascal}
+      ══════════════════════════════════════════════════════════════
+    HEADER
+  end
+
+  def usage
+    <<~USAGE
+
+      Usage: bin/rename <new_app_name>
+
+      Examples:
+        bin/rename my_saas_app
+        bin/rename cool_project
+        bin/rename client_portal
+
+      The name should be snake_case (lowercase, underscores, no hyphens).
+
+    USAGE
+  end
+end
+
+# ──────────────────────────────────────────────────────────────────────────────
+
+if ARGV.empty?
+  abort AppRenamer.new("").send(:usage)
+end
+
+AppRenamer.new(ARGV.first).run

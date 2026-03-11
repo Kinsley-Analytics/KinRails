@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────────────────────────────────────
+# bin/recreate
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Rebuilds the KinRails template from a fresh `rails new`.
+#
+# USE THIS WHEN:
+#   - Rails releases a major version (Rails 9, 10, etc.)
+#   - You want to regenerate the template with updated defaults
+#   - Something is broken and you want a clean slate
+#
+# This script is the single source of truth for how this template was built.
+# Every decision is documented in comments.
+#
+# IMPORTANT: This creates a fresh app in a separate directory. You then
+# diff and merge changes back into the template repo.
+#
+# Usage:
+#   bin/recreate                  # Creates kinrails-fresh/ alongside your repo
+#   bin/recreate my_output_dir    # Creates in specified directory
+#
+# After running:
+#   diff -rq kinrails-fresh/ . --exclude=.git --exclude=node_modules --exclude=tmp
+#
+# ──────────────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+OUTPUT_DIR="${1:-kinrails-fresh}"
+APP_NAME="kinrails"
+
+if [[ -d "$OUTPUT_DIR" ]]; then
+  echo "Error: $OUTPUT_DIR already exists. Remove it first or choose a different name."
+  exit 1
+fi
+
+echo ""
+echo "══════════════════════════════════════════════════════════════"
+echo "  Recreating KinRails template from fresh rails new"
+echo "  Output: $OUTPUT_DIR/"
+echo "══════════════════════════════════════════════════════════════"
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 1: Generate the Rails app
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# --database=postgresql     UUIDv7 support, pgcrypto, production-grade.
+# --javascript=esbuild      Full npm/yarn access for JS bundling.
+#
+# Skipping:
+#   action-mailbox           Inbound email. Not needed for most SaaS.
+#   action-text              Rich text (Trix). Pulls in Active Storage.
+#   active-storage           File uploads. Heavy dependencies. Add later.
+#   jbuilder                 JSON templates. We serve HTML with Hotwire.
+#
+# Keeping (Rails 8 defaults):
+#   Minitest + Fixtures      Our testing stack.
+#   Action Mailer            Devise needs email (confirmation, password reset).
+#   Action Cable             Required for Turbo Streams.
+#   Solid Queue/Cache/Cable  DB-backed infrastructure. No Redis.
+#   Propshaft                Asset pipeline.
+#   Kamal                    Deployment.
+#   Thruster                 HTTP/2 proxy.
+#
+# No --css flag. Rails 8 may default to Tailwind. We remove it and install
+# dartsass-rails in Step 2.
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 1: rails new..."
+
+rails new $APP_NAME \
+  --database=postgresql \
+  --javascript=esbuild \
+  --skip-action-mailbox \
+  --skip-action-text \
+  --skip-active-storage \
+  --skip-jbuilder
+
+mv $APP_NAME "$OUTPUT_DIR"
+cd "$OUTPUT_DIR"
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 2: Install Dart Sass (remove Tailwind if present)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# dartsass-rails is a standalone Dart Sass binary — no Node for CSS.
+#   - esbuild handles JS (requires Node)
+#   - Dart Sass handles CSS (standalone binary)
+#   - Pipelines are completely independent
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 2: Setting up Dart Sass..."
+
+# Remove Tailwind if rails new included it
+bundle remove tailwindcss-rails 2>/dev/null || true
+rm -f app/assets/stylesheets/application.tailwind.css 2>/dev/null || true
+
+bundle add dartsass-rails
+bin/rails dartsass:install
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 3: Install gems
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# ViewComponent    Reusable UI components with sidecar ERB
+# Devise           Authentication (sign up, sign in, password reset, etc.)
+# Pundit           Authorization via policy objects (admin / user roles)
+# dotenv-rails     Load .env files in development and test
+#
+# These are the core structural gems. AI, billing, analytics, admin, and
+# logging gems are also in the Gemfile but installed via bundle install.
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 3: Installing core gems..."
+
+bundle add view_component
+bundle add devise
+bundle add pundit
+bundle add dotenv-rails --group "development, test"
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 4: Run generators
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 4: Running generators..."
+
+# ViewComponent base class
+mkdir -p app/components
+cat > app/components/application_component.rb << 'RUBY'
+# frozen_string_literal: true
+
+class ApplicationComponent < ViewComponent::Base
+end
+RUBY
+mkdir -p test/components
+
+# Devise
+bin/rails generate devise:install
+bin/rails generate devise User
+bin/rails generate devise:views
+
+# Pundit
+bin/rails generate pundit:install
+mkdir -p test/policies
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 5: UUIDv7 primary keys
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Ruby 3.3+ ships SecureRandom.uuid_v7 in stdlib. No gem needed.
+# All tables use UUID PKs. All foreign keys are :uuid type.
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 5: Configuring UUIDv7..."
+
+cat > config/initializers/generators.rb << 'RUBY'
+Rails.application.config.generators do |g|
+  g.orm :active_record, primary_key_type: :uuid
+end
+RUBY
+
+cat > app/models/application_record.rb << 'RUBY'
+class ApplicationRecord < ActiveRecord::Base
+  primary_abstract_class
+
+  before_create :set_uuid
+
+  private
+
+  def set_uuid
+    self.id ||= SecureRandom.uuid_v7
+  end
+end
+RUBY
+
+cat > db/migrate/00000000000001_enable_pgcrypto.rb << 'RUBY'
+class EnablePgcrypto < ActiveRecord::Migration[8.0]
+  def change
+    enable_extension "pgcrypto"
+  end
+end
+RUBY
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 6: CurrentAttributes
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 6: Adding CurrentAttributes..."
+
+cat > app/models/current.rb << 'RUBY'
+class Current < ActiveSupport::CurrentAttributes
+  attribute :user
+end
+RUBY
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 7: Design system Sass structure
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# These are hand-maintained files. This step only creates the directories.
+# Copy _tokens.scss, _mixins.scss, _reset.scss, and application.scss
+# from the existing template.
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 7: Creating design system directories..."
+
+mkdir -p app/assets/stylesheets/design_system
+mkdir -p app/assets/stylesheets/components
+mkdir -p app/assets/stylesheets/layouts
+
+echo "   Copy design system files from existing template:"
+echo "     design_system/_tokens.scss"
+echo "     design_system/_mixins.scss"
+echo "     design_system/_reset.scss"
+echo "     application.scss"
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 8: Environment file templates
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 8: Copy env example files from existing template."
+echo "     .env.development.example"
+echo "     .env.test.example"
+
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 9: Remaining hand-maintained files
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "→ Step 9: Copy remaining files from existing template:"
+echo ""
+echo "   CLAUDE.md"
+echo "   README.md"
+echo "   bin/rename"
+echo "   bin/setup"
+echo "   bin/recreate  (this script)"
+echo ""
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Done
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "══════════════════════════════════════════════════════════════"
+echo "  Fresh template generated in: $OUTPUT_DIR/"
+echo "══════════════════════════════════════════════════════════════"
+echo ""
+echo "  Next steps:"
+echo "    1. Copy hand-maintained files listed above"
+echo "    2. Diff against your current template:"
+echo "       diff -rq $OUTPUT_DIR/ . --exclude=.git --exclude=node_modules --exclude=tmp"
+echo "    3. Merge any Rails version changes back into the template"
+echo ""

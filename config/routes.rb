@@ -11,4 +11,8 @@ Rails.application.routes.draw do
 
   # Defines the root path route ("/")
   # root "posts#index"
+
+  if Rails.env.development?
+    get "design-system" => "design_system#show"
+  end
 end
