@@ -57,6 +57,10 @@ gem "geocoder"
 # Lightweight Rails admin engine by Chris Oliver (GoRails).
 gem "madmin"
 
+# ─── Auth & Authorization ────────────────────────────────────────────────────
+gem "devise"
+gem "pundit"
+
 # ─── Logging ──────────────────────────────────────────────────────────────────
 # Structured, single-line JSON logs. Production-ready by default.
 # Enable in dev with LOGRAGE_IN_DEVELOPMENT=true in .env.development.

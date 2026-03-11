@@ -1,8 +1,11 @@
 class ApplicationController < ActionController::Base
+  include Pundit::Authorization
+
   allow_browser versions: :modern
 
-  # Uncomment after running: bin/rails generate devise:install
-  # before_action :set_current_user
+  before_action :set_current_user
+  after_action :verify_authorized, except: :index, unless: :devise_controller?
+  after_action :verify_policy_scoped, only: :index, unless: :devise_controller?
 
   private
 
