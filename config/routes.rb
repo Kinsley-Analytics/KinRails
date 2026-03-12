@@ -15,7 +15,7 @@ Rails.application.routes.draw do
   root "home#index"
 
   namespace :admin do
-    resource :impersonation, only: [:create, :destroy]
+    resource :impersonation, only: [ :create, :destroy ]
   end
 
   if Rails.env.development?
