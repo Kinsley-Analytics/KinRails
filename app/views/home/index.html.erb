@@ -1,1 +1,11 @@
 <h1>Welcome to KinRails!</h1>
+
+<% if current_user&.admin? %>
+  <%= button_to "Impersonate test user",
+    admin_impersonation_path(user_id: "019ce20d-d1d2-7645-a003-800985e691ab"),
+    method: :post %>
+<% end %>
+
+<% if session[:admin_user_id] %>
+  <%= button_to "Stop impersonating", admin_impersonation_path, method: :delete %>
+<% end %>

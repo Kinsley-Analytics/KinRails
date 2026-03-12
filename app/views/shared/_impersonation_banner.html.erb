@@ -1,0 +1,7 @@
+<%# locals: () %>
+<% if session[:admin_user_id] %>
+  <div class="impersonation-banner">
+    Impersonating <%= current_user.email %> —
+    <%= button_to "Stop", admin_impersonation_path, method: :delete %>
+  </div>
+<% end %>

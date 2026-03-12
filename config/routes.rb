@@ -14,6 +14,10 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root "home#index"
 
+  namespace :admin do
+    resource :impersonation, only: [:create, :destroy]
+  end
+
   if Rails.env.development?
     get "design-system" => "design_system#show"
   end
