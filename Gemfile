@@ -3,7 +3,7 @@ source "https://rubygems.org"
 ruby "~> 4.0.2"
 
 # ─── Framework ────────────────────────────────────────────────────────────────
-gem "rails", "~> 8.1.2"
+gem "rails", "~> 8.1.3"
 gem "propshaft"                   # Modern asset pipeline (Rails 8 default)
 gem "bootsnap", require: false    # Reduces boot times through caching
 
